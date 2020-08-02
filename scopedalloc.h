@@ -523,13 +523,13 @@ namespace scoped_alloc
             }
     };
 
-    template<typename Key, typename Value, size_t Alignment = alignof(std::max_align_t)> class hash_wrapper
+    template<typename Key, typename Value, size_t Alignment = alignof(std::max_align_t), typename KeyHash = std::hash<Key>, typename KeyEq = std::equal_to<Key>> class hash_wrapper
     {
         private:
             scoped_alloc::dynamic_arena<Alignment> m_arena;
 
         public:
-            std::unordered_map<Key, Value, std::hash<Key>, std::equal_to<Key>, scoped_alloc::allocator<std::pair<const Key, Value>, Alignment>> c;
+            std::unordered_map<Key, Value, KeyHash, KeyEq, scoped_alloc::allocator<std::pair<const Key, Value>, Alignment>> c;
 
         public:
             hash_wrapper(): c(typename decltype(c)::allocator_type(m_arena)) {}
@@ -550,6 +550,7 @@ namespace scoped_alloc
                 // estimate buffer to use with default load factor
                 //     s1: bucket pointer buffer
                 //     s2: the key-value pair memory usage, with the next pointer
+                //     s3: used as margin, and also when n = 0 the unordered_map still needs memory
                 // this s1/s2 estimation highly depends on the internal implementation of std::unordered_map
 
                 const size_t s1 = n * scoped_alloc::aligned_size<Alignment>(sizeof(void *));
@@ -569,6 +570,11 @@ namespace scoped_alloc
             size_t used() const
             {
                 return m_arena.used();
+            }
+
+            size_t buf_size() const
+            {
+                return m_arena.get_buf().size;
             }
     };
 
